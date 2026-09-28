@@ -76,6 +76,29 @@ def test_document_adapter_extracts_pdf_text_with_reader(monkeypatch: pytest.Monk
     assert payload["metadata"]["document_type"] == "pdf"
     assert "First page" in payload["content"]
     assert "Second page" in payload["content"]
+    assert payload["metadata"]["pages"] == [
+        {"page_number": 1, "char_offset": 0, "char_count": 10},
+        {"page_number": 2, "char_offset": 11, "char_count": 11},
+    ]
+
+
+def test_document_adapter_sanitizes_credentials(tmp_path: Path) -> None:
+    source_root = tmp_path / "approved"
+    allowed_root = source_root / "docs"
+    allowed_root.mkdir(parents=True)
+    secret_doc = allowed_root / "secret.md"
+    secret_doc.write_text(
+        "# Runbook\nDeploy using AKIAIOSFODNN7EXAMPLE and database postgresql://admin:secret123@db:5432/app",
+        encoding="utf-8",
+    )
+
+    adapter = AllowlistedDocumentSourceAdapter(source_root=source_root, allowed_roots=[allowed_root])
+    payload = adapter.fetch_resource("docs/secret.md")
+
+    assert "AKIAIOSFODNN7EXAMPLE" not in payload["content"]
+    assert "[REDACTED_AWS_KEY]" in payload["content"]
+    assert "secret123" not in payload["content"]
+    assert "postgresql://admin:[REDACTED]@db:5432/app" in payload["content"]
 
 
 def test_document_adapter_rejects_unapproved_path(tmp_path: Path) -> None:

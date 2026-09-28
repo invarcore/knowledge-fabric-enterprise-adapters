@@ -209,6 +209,28 @@ python3 demo/02-demo.py
 
 ---
 
+## 🔌 Enterprise Adapters MCP Server
+
+Expose approved enterprise documents and sources directly to AI agents via the Model Context Protocol (MCP) with automated secret redaction:
+
+```bash
+# Set approved document root
+export ENTERPRISE_ADAPTER_DOCS_ROOT="/path/to/approved/docs"
+
+# Run MCP server over stdio
+enterprise-adapters-mcp
+```
+
+### Available MCP Tools
+
+| Tool | Parameters | Description |
+| :--- | :--- | :--- |
+| `health_check` | *None* | Returns adapter service status, registered source adapters, and redaction posture. |
+| `list_sources` | `tenant_id` (optional) | Lists all available source adapters and their allowlisted document resources. |
+| `fetch_document` | `source`, `resource_id`, `tenant_id` (optional) | Retrieves document content with sensitive secrets (keys, tokens, passwords) automatically scrubbed and PDF page metadata attached. |
+
+---
+
 ## Production Deployment
 
 ### Docker Deployment

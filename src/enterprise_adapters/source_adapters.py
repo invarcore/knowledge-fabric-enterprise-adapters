@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterable
 
+from enterprise_adapters.content_sanitizer import sanitize_document_content
 from enterprise_adapters.contracts import ReadOnlyResource
 
 _SUPPORTED_EXTENSIONS = {".md", ".markdown"}
@@ -41,7 +42,7 @@ class PrivateMarkdownSourceAdapter:
             raise ValueError(f"Unsupported source type: {file_path.suffix}")
 
         text = file_path.read_bytes().decode("utf-8")
-        normalized = _normalize_markdown(text)
+        normalized = sanitize_document_content(_normalize_markdown(text))
         stat = file_path.stat()
         return {
             "resource_id": resource_id,

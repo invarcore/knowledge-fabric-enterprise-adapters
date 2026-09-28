@@ -10,6 +10,8 @@ import logging
 import os
 import re
 
+from enterprise_adapters.content_sanitizer import sanitize_document_content
+
 _BEARER_PATTERN = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE)
 _BASIC_PATTERN = re.compile(r"(Basic\s+)[A-Za-z0-9+/=]{8,}", re.IGNORECASE)
 _QUERY_PARAM_PATTERN = re.compile(

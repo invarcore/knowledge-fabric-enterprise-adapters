@@ -28,6 +28,9 @@ dependencies = []
 Homepage = "https://github.com/sagarv48/knowledge-fabric-enterprise-adapters"
 "Bug Tracker" = "https://github.com/sagarv48/knowledge-fabric-enterprise-adapters/issues"
 
+[project.scripts]
+enterprise-adapters-mcp = "enterprise_adapters.mcp_server:main"
+
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0", "ruff>=0.4.0", "pyright>=1.1.0"]
 pdf = ["pypdf>=5.0.0"]

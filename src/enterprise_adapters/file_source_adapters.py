@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterable
 
+from enterprise_adapters.content_sanitizer import sanitize_document_content
 from enterprise_adapters.contracts import ReadOnlyResource
 
 _SUPPORTED_EXTENSIONS = {
@@ -58,7 +59,7 @@ class ApprovedFileStoreSourceAdapter:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
 
         stat = file_path.stat()
-        content = _normalize_text(file_path.read_bytes().decode("utf-8"))
+        content = sanitize_document_content(_normalize_text(file_path.read_bytes().decode("utf-8")))
         return {
             "resource_id": resource_id,
             "path": str(file_path),

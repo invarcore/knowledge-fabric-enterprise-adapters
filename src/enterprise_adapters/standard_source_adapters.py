@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 from zipfile import ZipFile
 from xml.etree import ElementTree as ET
 
+from enterprise_adapters.content_sanitizer import sanitize_document_content
 from enterprise_adapters.contracts import ReadOnlyResource
 
 _DOCUMENT_EXTENSIONS = {".md", ".markdown", ".txt", ".html", ".htm", ".docx", ".pdf"}
@@ -89,21 +90,32 @@ class AllowlistedDocumentSourceAdapter:
         if file_path.suffix.lower() not in _DOCUMENT_EXTENSIONS:
             raise ValueError(f"Unsupported file type: {file_path.suffix}")
 
-        content = _extract_document_content(file_path)
+        pages_meta: list[dict[str, object]] | None = None
+        if file_path.suffix.lower() == ".pdf":
+            content, pages_meta = _extract_pdf_with_pages(file_path)
+        else:
+            content = _extract_document_content(file_path)
+
+        content = sanitize_document_content(content)
         stat = file_path.stat()
+        metadata: dict[str, object] = {
+            "name": file_path.name,
+            "extension": file_path.suffix.lower(),
+            "document_type": _document_type(file_path.suffix.lower()),
+            "size_bytes": stat.st_size,
+            "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+            "source_root": str(self.source_root),
+        }
+        if pages_meta is not None:
+            metadata["pages"] = pages_meta
+            metadata["page_count"] = len(pages_meta)
+
         return {
             "resource_id": resource_id,
             "path": str(file_path),
             "relative_path": file_path.relative_to(self.source_root).as_posix(),
             "content": content,
-            "metadata": {
-                "name": file_path.name,
-                "extension": file_path.suffix.lower(),
-                "document_type": _document_type(file_path.suffix.lower()),
-                "size_bytes": stat.st_size,
-                "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
-                "source_root": str(self.source_root),
-            },
+            "metadata": metadata,
         }
 
     def _active_roots(self) -> Iterable[Path]:
@@ -188,7 +200,7 @@ class AllowlistedWebsiteSourceAdapter:
             charset = response.headers.get_content_charset() or "utf-8"
 
         text = raw.decode(charset, errors="replace")
-        normalized = _extract_web_content(text, content_type)
+        normalized = sanitize_document_content(_extract_web_content(text, content_type))
         parsed = urlparse(url)
         return {
             "resource_id": url,
@@ -301,7 +313,7 @@ class GitHubRepositorySourceAdapter:
         else:
             text = str(content)
 
-        normalized = _normalize_text(text)
+        normalized = sanitize_document_content(_normalize_text(text))
         return {
             "resource_id": path,
             "path": path,
@@ -386,14 +398,27 @@ def _extract_docx_text(file_path: Path) -> str:
     return _normalize_text("\n".join(paragraphs))
 
 
-def _extract_pdf_text(file_path: Path) -> str:
+def _extract_pdf_with_pages(file_path: Path) -> tuple[str, list[dict[str, object]]]:
     reader = _load_pdf_reader(file_path)
-    pages = []
-    for page in reader.pages:
+    pages_meta: list[dict[str, object]] = []
+    full_text_parts: list[str] = []
+    current_offset = 0
+    for i, page in enumerate(reader.pages, start=1):
         extracted = page.extract_text() or ""
         if extracted:
-            pages.append(extracted)
-    return _normalize_text("\n".join(pages))
+            pages_meta.append({
+                "page_number": i,
+                "char_offset": current_offset,
+                "char_count": len(extracted),
+            })
+            full_text_parts.append(extracted)
+            current_offset += len(extracted) + 1
+    return _normalize_text("\n".join(full_text_parts)), pages_meta
+
+
+def _extract_pdf_text(file_path: Path) -> str:
+    text, _ = _extract_pdf_with_pages(file_path)
+    return text
 
 
 def _load_pdf_reader(file_path: Path):
