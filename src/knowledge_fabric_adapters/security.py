@@ -12,6 +12,13 @@ import re
 
 from enterprise_adapters.content_sanitizer import sanitize_document_content
 
+__all__ = [
+    "sanitize_log_message",
+    "sanitize_exception",
+    "RedactingLoggingFilter",
+    "sanitize_document_content",
+]
+
 _BEARER_PATTERN = re.compile(r"(Bearer\s+)[A-Za-z0-9_\-\.]{8,}", re.IGNORECASE)
 _BASIC_PATTERN = re.compile(r"(Basic\s+)[A-Za-z0-9+/=]{8,}", re.IGNORECASE)
 _QUERY_PARAM_PATTERN = re.compile(
@@ -35,7 +42,7 @@ def sanitize_log_message(message: str) -> str:
     scrubbed = _BASIC_PATTERN.sub(r"\1[REDACTED]", scrubbed)
     scrubbed = _QUERY_PARAM_PATTERN.sub(r"\1[REDACTED]", scrubbed)
     scrubbed = _HEADER_AUTH_PATTERN.sub(r"\1[REDACTED]\2", scrubbed)
-    return scrubbed
+    return sanitize_document_content(scrubbed)
 
 
 def sanitize_exception(exc: Exception) -> str:
