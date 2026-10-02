@@ -75,17 +75,21 @@ class AdapterRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def serve(host: str = "0.0.0.0", port: int = 8080) -> None:
+def serve(host: str | None = None, port: int | None = None) -> None:
     """Run the private adapter status service."""
+    import os
+
+    resolved_host = host or os.environ.get("ADAPTER_HOST", "127.0.0.1")
+    resolved_port = port if port is not None else int(os.environ.get("ADAPTER_PORT", "8080"))
 
     context = AdapterContext(
         adapter_name="enterprise-adapters",
-        environment="local",
+        environment=os.environ.get("ENVIRONMENT", "local"),
         metadata={"mode": "http"},
     )
-    server = AdapterHTTPServer((host, port), AdapterRequestHandler, context)
+    server = AdapterHTTPServer((resolved_host, resolved_port), AdapterRequestHandler, context)
     print(
-        f"Enterprise adapter HTTP service listening on {host}:{port} "
+        f"Enterprise adapter HTTP service listening on {resolved_host}:{resolved_port} "
         f"for {asdict(context)}"
     )
     try:

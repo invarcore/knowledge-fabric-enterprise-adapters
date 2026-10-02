@@ -41,11 +41,12 @@ class EnterpriseAdaptersMCPTools:
 
     def health_check(self) -> dict[str, object]:
         """Check enterprise adapters health and return registered sources and sanitization posture."""
+        redaction_active = os.environ.get("ADAPTERS_REDACT_SECRETS", "true").lower() not in ("false", "0", "off")
         return {
             "status": "healthy",
             "service": "enterprise-adapters",
             "registered_sources": sorted(list(self._adapters.keys())),
-            "redaction_active": True,
+            "redaction_active": redaction_active,
             "schema_version": MCP_SCHEMA_VERSION,
         }
 
@@ -55,25 +56,38 @@ class EnterpriseAdaptersMCPTools:
         Parameters:
         - tenant_id: Optional tenant identifier for scoping access.
         """
+        effective_tenant = tenant_id or os.environ.get("KF_DEFAULT_TENANT") or "default"
         sources_summary: list[dict[str, object]] = []
         for name, adapter in self._adapters.items():
             resources: list[ReadOnlyResource] = []
             if hasattr(adapter, "list_resources"):
                 resources = adapter.list_resources()
+
+            filtered_resources = []
+            for r in resources:
+                res_tenant = r.metadata.get("tenant_id") if isinstance(r.metadata, dict) else None
+                if res_tenant is not None and res_tenant != effective_tenant:
+                    continue
+                if "/" in r.resource_id:
+                    prefix = r.resource_id.split("/")[0]
+                    if (prefix.startswith("tenant-") or prefix.startswith("tenant_")) and prefix != effective_tenant:
+                        continue
+                filtered_resources.append(r)
+
             sources_summary.append({
                 "source": name,
-                "resource_count": len(resources),
+                "resource_count": len(filtered_resources),
                 "resources": [
                     {
                         "resource_id": r.resource_id,
                         "name": r.name,
-                        "metadata": r.metadata,
+                        "metadata": {k: v for k, v in r.metadata.items() if k not in ("path", "source_root")},
                     }
-                    for r in resources
+                    for r in filtered_resources
                 ],
             })
         return {
-            "tenant_id": tenant_id or os.environ.get("KF_DEFAULT_TENANT") or "default",
+            "tenant_id": effective_tenant,
             "sources": sources_summary,
         }
 
@@ -98,9 +112,21 @@ class EnterpriseAdaptersMCPTools:
         if not hasattr(adapter, "fetch_resource"):
             raise ValueError(f"Source adapter '{source}' does not support fetch_resource")
 
+        effective_tenant = tenant_id or os.environ.get("KF_DEFAULT_TENANT") or "default"
+        if "/" in resource_id:
+            prefix = resource_id.split("/")[0]
+            if (prefix.startswith("tenant-") or prefix.startswith("tenant_")) and prefix != effective_tenant:
+                raise PermissionError(
+                    f"Access denied: resource '{resource_id}' belongs to tenant '{prefix}', not '{effective_tenant}'"
+                )
+
         payload = adapter.fetch_resource(resource_id)
-        if tenant_id and isinstance(payload.get("metadata"), dict):
-            payload["metadata"]["tenant_id"] = tenant_id
+        # Redact server absolute path leaks from payload
+        payload.pop("path", None)
+        if isinstance(payload.get("metadata"), dict):
+            payload["metadata"].pop("source_root", None)
+            payload["metadata"].pop("path", None)
+            payload["metadata"]["tenant_id"] = effective_tenant
         return payload
 
 
