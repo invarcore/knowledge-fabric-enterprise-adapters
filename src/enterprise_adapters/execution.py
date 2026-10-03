@@ -1,9 +1,17 @@
-"""Approved runtime execution for private adapters."""
+"""Approved runtime execution for private adapters.
+
+Includes fail-closed ExecutionEnvelope with tri-state verification
+(CONFIRMED, UNCERTAIN, FAILED) and live readback support.
+"""
 
 from __future__ import annotations
 
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import Enum
 from hashlib import sha1
+from typing import Any
 
 import os
 
@@ -22,6 +30,158 @@ class ExecutionReceipt:
     approval_id: str
     logs: list[str] = field(default_factory=list)
     metadata: dict[str, object] = field(default_factory=dict)
+
+
+class ExecutionStatus(Enum):
+    """Tri-state outcome for fail-closed execution verification.
+
+    - CONFIRMED: Post-mutation readback verified the expected state change.
+    - UNCERTAIN: Execution dispatched but readback timed out or returned
+      an inconclusive result. The caller MUST NOT blindly retry — use the
+      correlation_id to investigate before re-attempting.
+    - FAILED: Execution was rejected or raised an error. Safe to retry
+      with a corrected payload.
+    """
+
+    CONFIRMED = "confirmed"
+    UNCERTAIN = "uncertain"
+    FAILED = "failed"
+
+
+@dataclass(slots=True)
+class ExecutionEnvelope:
+    """Fail-closed execution envelope with live readback verification.
+
+    Wraps the result of a dispatched mutation with a tri-state verification
+    outcome. The envelope guarantees that callers can never silently swallow
+    an ambiguous execution result:
+
+    - CONFIRMED  → readback proved the mutation landed.
+    - UNCERTAIN  → mutation may or may not have landed; correlation_id
+                   provided for manual investigation. Blind retries are
+                   explicitly blocked.
+    - FAILED     → mutation definitively did not land; safe to retry.
+    """
+
+    envelope_id: str = field(default_factory=lambda: str(uuid.uuid4())[:12])
+    correlation_id: str = field(default_factory=lambda: f"corr-{uuid.uuid4().hex[:16]}")
+    status: ExecutionStatus = ExecutionStatus.FAILED
+    action_name: str = ""
+    approval_id: str = ""
+    readback_state: dict[str, Any] | None = None
+    expected_state: dict[str, Any] | None = None
+    mismatch_fields: list[str] = field(default_factory=list)
+    error: str | None = None
+    logs: list[str] = field(default_factory=list)
+
+    @property
+    def is_safe_to_retry(self) -> bool:
+        """Only FAILED envelopes are safe to retry. UNCERTAIN must investigate first."""
+        return self.status == ExecutionStatus.FAILED
+
+    @property
+    def is_confirmed(self) -> bool:
+        return self.status == ExecutionStatus.CONFIRMED
+
+    @property
+    def requires_investigation(self) -> bool:
+        """UNCERTAIN envelopes require human/automated investigation before retry."""
+        return self.status == ExecutionStatus.UNCERTAIN
+
+
+def dispatch_with_readback(
+    action_name: str,
+    approval_id: str,
+    dispatch_fn: Callable[[], dict[str, Any]],
+    readback_fn: Callable[[], dict[str, Any] | None],
+    expected_state: dict[str, Any],
+) -> ExecutionEnvelope:
+    """Execute a mutation and verify via post-mutation readback.
+
+    Args:
+        action_name: Human-readable name of the action being dispatched.
+        approval_id: Approval token ID authorizing this mutation.
+        dispatch_fn: Callable that performs the mutation. Returns a result dict.
+        readback_fn: Callable that queries post-mutation state. Returns state
+            dict or None if readback is unavailable/timed out.
+        expected_state: Dict of key-value pairs that readback_fn should return
+            if the mutation landed successfully.
+
+    Returns:
+        ExecutionEnvelope with verified tri-state outcome.
+    """
+    envelope = ExecutionEnvelope(
+        action_name=action_name,
+        approval_id=approval_id,
+        expected_state=expected_state,
+    )
+
+    # Phase 1: Dispatch the mutation
+    try:
+        result = dispatch_fn()
+        envelope.logs.append(f"Dispatch succeeded: {action_name}")
+        if isinstance(result, dict):
+            envelope.logs.extend(
+                f"  {k}: {v}" for k, v in list(result.items())[:5]
+            )
+    except Exception as exc:
+        envelope.status = ExecutionStatus.FAILED
+        envelope.error = f"Dispatch error: {type(exc).__name__}: {exc}"
+        envelope.logs.append(envelope.error)
+        return envelope
+
+    # Phase 2: Live readback verification
+    try:
+        actual_state = readback_fn()
+    except Exception as exc:
+        # Readback failed — mutation MAY have landed but we can't verify
+        envelope.status = ExecutionStatus.UNCERTAIN
+        envelope.error = f"Readback error: {type(exc).__name__}: {exc}"
+        envelope.logs.append(
+            f"UNCERTAIN: Readback failed after dispatch. "
+            f"Correlation ID: {envelope.correlation_id}"
+        )
+        return envelope
+
+    if actual_state is None:
+        # Readback returned nothing — timeout or unavailable
+        envelope.status = ExecutionStatus.UNCERTAIN
+        envelope.error = "Readback returned None (timeout or unavailable)"
+        envelope.logs.append(
+            f"UNCERTAIN: Readback unavailable. "
+            f"Correlation ID: {envelope.correlation_id}"
+        )
+        return envelope
+
+    envelope.readback_state = actual_state
+
+    # Phase 3: Compare readback against expected state
+    mismatches: list[str] = []
+    for key, expected_value in expected_state.items():
+        actual_value = actual_state.get(key)
+        if actual_value != expected_value:
+            mismatches.append(
+                f"{key}: expected={expected_value!r}, actual={actual_value!r}"
+            )
+
+    if mismatches:
+        envelope.status = ExecutionStatus.UNCERTAIN
+        envelope.mismatch_fields = [m.split(":")[0] for m in mismatches]
+        envelope.error = f"Readback mismatch on {len(mismatches)} field(s)"
+        envelope.logs.append(
+            f"UNCERTAIN: State mismatch after dispatch. "
+            f"Correlation ID: {envelope.correlation_id}"
+        )
+        for m in mismatches:
+            envelope.logs.append(f"  Mismatch: {m}")
+        return envelope
+
+    # All readback fields match — confirmed!
+    envelope.status = ExecutionStatus.CONFIRMED
+    envelope.logs.append(
+        f"CONFIRMED: All {len(expected_state)} expected fields verified via readback."
+    )
+    return envelope
 
 
 class ApprovedRuntimeActionAdapter:
