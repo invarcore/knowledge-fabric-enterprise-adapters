@@ -541,7 +541,14 @@ def test_mcp_tools_fetch_document_tenant_isolation_and_errors() -> None:
     assert result["metadata"]["tenant_id"] == "tenant-A"
 
 
-def test_create_mcp_server_invocations() -> None:
+def test_create_mcp_server_invocations(monkeypatch) -> None:
+    from types import ModuleType
+    fastmcp_mock = MagicMock()
+    fastmcp_cls = MagicMock(return_value=fastmcp_mock)
+    fake_mod = ModuleType("mcp.server.fastmcp")
+    fake_mod.FastMCP = fastmcp_cls
+    monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_mod)
+
     tools = EnterpriseAdaptersMCPTools()
     server = create_mcp_server(tools)
     assert server is not None

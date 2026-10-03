@@ -22,6 +22,6 @@ COPY benchmarks/ ./benchmarks/
 # Install dependencies in editable mode including dev test tooling
 RUN uv venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
-RUN uv pip install -e ".[dev]"
+RUN uv pip install -e ".[dev,mcp]"
 
 CMD ["uv", "run", "pytest", "--cov=enterprise_adapters", "--cov=knowledge_fabric_adapters", "--cov-report=term-missing", "--cov-fail-under=90"]
