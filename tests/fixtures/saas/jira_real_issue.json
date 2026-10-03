@@ -1,0 +1,77 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "104928",
+  "self": "https://jira.enterprise.internal/rest/api/2/issue/104928",
+  "key": "PROD-8421",
+  "fields": {
+    "summary": "Severe Consumer Group Rebalance Storm in Apache Kafka Cluster After Cross-AZ Latency Spike",
+    "issuetype": {
+      "self": "https://jira.enterprise.internal/rest/api/2/issuetype/1",
+      "id": "1",
+      "description": "A problem which impairs or prevents the functions of the product.",
+      "name": "Incident",
+      "subtask": false
+    },
+    "project": {
+      "self": "https://jira.enterprise.internal/rest/api/2/project/10000",
+      "id": "10000",
+      "key": "PROD",
+      "name": "Production Operations",
+      "projectTypeKey": "service_desk"
+    },
+    "priority": {
+      "self": "https://jira.enterprise.internal/rest/api/2/priority/1",
+      "id": "1",
+      "name": "Critical"
+    },
+    "status": {
+      "self": "https://jira.enterprise.internal/rest/api/2/status/6",
+      "id": "6",
+      "name": "Resolved",
+      "statusCategory": {
+        "self": "https://jira.enterprise.internal/rest/api/2/statuscategory/3",
+        "id": 3,
+        "key": "done",
+        "name": "Done"
+      }
+    },
+    "created": "2026-09-14T03:15:22.000+0000",
+    "updated": "2026-09-14T08:45:10.000+0000",
+    "resolutiondate": "2026-09-14T08:30:00.000+0000",
+    "description": "### Incident Summary\nAt 03:12 UTC, a 450ms network packet loss spike occurred across AWS us-east-1a and us-east-1b transit gateways. This caused 12 payment-processing Kafka consumer instances to miss heartbeat deadlines (session.timeout.ms=10000, heartbeat.interval.ms=3000).\n\n### Impact\n- Payment settlement pipeline lag increased from 150ms to 42 minutes.\n- 85,000 webhook events queued in Dead Letter Queue (DLQ).\n- Rebalance storm cascading across 8 broker nodes.\n\n### Error Logs and Stack Trace\n```text\norg.apache.kafka.common.errors.CommitFailedException: Commit cannot be completed since the group has already\nrebalanced and assigned the partitions to another member. This means that the time between subsequent calls\nto poll() was longer than the configured max.poll.interval.ms, or that a member missed heartbeats.\nat org.apache.kafka.clients.consumer.internals.ConsumerCoordinator.sendOffsetCommitRequest(ConsumerCoordinator.java:1120)\nat org.apache.kafka.clients.consumer.internals.ConsumerCoordinator.commitOffsetsSync(ConsumerCoordinator.java:659)\nat org.apache.kafka.clients.consumer.KafkaConsumer.commitSync(KafkaConsumer.java:1510)\nat com.enterprise.billing.KafkaStreamProcessor.processBatch(KafkaStreamProcessor.java:88)\n```\n\n### Diagnostic Telemetry\nLeaked debug connection during triage:\n`postgres://telemetry_admin:SuperSecretPass123!@db-replica.internal:5432/telemetry_db`\nAWS Key used for CloudWatch metrics scrape: `AKIAIOSFODNN7EXAMPLE`\nSlack webhook triage token: `xoxb-mock-slack-triage-token-fixture-12345`\n\n### Root Cause\n1. Inadequate heartbeat timeout margin relative to cross-AZ jitter.\n2. Eager rebalance protocol (EagerAssignor) rather than CooperativeStickyAssignor.",
+    "comment": {
+      "comments": [
+        {
+          "id": "50101",
+          "author": {
+            "name": "sarah.chen",
+            "displayName": "Sarah Chen (Staff SRE)"
+          },
+          "created": "2026-09-14T04:20:00.000+0000",
+          "body": "Mitigation applied: Switched partition assignment strategy to org.apache.kafka.clients.consumer.CooperativeStickyAssignor on all payment pods."
+        },
+        {
+          "id": "50102",
+          "author": {
+            "name": "marcus.vance",
+            "displayName": "Marcus Vance (Principal Platform Eng)"
+          },
+          "created": "2026-09-14T05:45:00.000+0000",
+          "body": "Tuned consumer parameters:\n- session.timeout.ms: 45000\n- heartbeat.interval.ms: 15000\n- max.poll.interval.ms: 300000\nConsumer group stabilized; DLQ drained completely."
+        },
+        {
+          "id": "50103",
+          "author": {
+            "name": "elena.rostova",
+            "displayName": "Elena Rostova (SecOps)"
+          },
+          "created": "2026-09-14T08:30:00.000+0000",
+          "body": "Post-incident action item: Rotated all triage credentials found in thread. Verified fix in staging cluster."
+        }
+      ],
+      "maxResults": 3,
+      "total": 3,
+      "startAt": 0
+    }
+  }
+}

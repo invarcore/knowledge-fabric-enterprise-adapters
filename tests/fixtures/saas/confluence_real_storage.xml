@@ -1,0 +1,42 @@
+<p><h1>Architectural Decision Record (ADR-0042): Zero Trust Service Mesh Migration</h1></p>
+<ac:structured-macro ac:name="info">
+  <ac:rich-text-body>
+    <p>This document defines the cryptographic mutual TLS (mTLS) enforcement policy across all production Kubernetes ingress and egress topologies for PCI-DSS 4.0 compliance.</p>
+  </ac:rich-text-body>
+</ac:structured-macro>
+
+<h2>Context and Problem Statement</h2>
+<p>Legacy internal services currently communicate over plaintext HTTP within AWS VPC boundaries. Security compliance mandates hardware-backed SPIFFE/SPIRE cryptographic workload identity attestation and end-to-end TLS 1.3 encryption across all cluster nodes.</p>
+
+<h2>Decision: Istio Ambient Mesh Architecture</h2>
+<p>We adopt Istio Ambient Mesh with ztunnel for L4 mTLS encryption and waypoint proxies for fine-grained L7 authorization policies.</p>
+<ul>
+  <li>Zero sidecar overhead on application pods</li>
+  <li>Transparent mTLS with automated x509 certificate renewal every 12 hours</li>
+  <li>Strict peer authentication across prod-banking and prod-checkout namespaces</li>
+</ul>
+
+<h2>Strict Enforcement Policy Configuration</h2>
+<pre>
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: prod-banking
+spec:
+  mtls:
+    mode: STRICT
+</pre>
+
+<h2>Approved Cryptographic Cipher Suites</h2>
+<p>All ingress controllers must reject TLS 1.0, 1.1, and 1.2. The following cipher suites are strictly enforced:</p>
+<ul>
+  <li>TLS_AES_256_GCM_SHA384 (Default for AES-NI hardware accelerated hosts)</li>
+  <li>TLS_CHACHA20_POLY1305_SHA256 (ARM64 Graviton instances)</li>
+</ul>
+
+<h2>Legacy Gateway Decommissioning</h2>
+<p>Legacy internal ingress proxy used static auth token headers which will be revoked on October 31, 2026:</p>
+<p>Deprecated Header: Authorization: Basic dXNlcjpzdXBlcnNlY3JldA==</p>
+<p>Deprecated Service Token: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkxlZ2FjeUFwaSJ9.signature</p>
+<p>Target Database: postgres://admin_ro:AdminPass2026!@legacy-proxy.internal:5432/router_config</p>
