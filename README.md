@@ -161,6 +161,49 @@ if not is_valid:
 
 ---
 
+## Fail-Closed "Honest Contract" Envelopes with Live Readback
+
+To eliminate the **blind mutation vulnerability** (where an adapter returns `200 OK` on HTTP dispatch even if the underlying system of record failed to apply changes), Enterprise Adapters wraps state mutations in fail-closed `ExecutionEnvelope`s with mandatory post-mutation readback verification:
+
+```python
+from enterprise_adapters.execution import dispatch_with_readback, ExecutionStatus
+
+# Execute mutation and immediately query system of record to verify state
+envelope = dispatch_with_readback(
+    action_name="k8s.restart_deployment",
+    approval_id="appr_87f2e1a9",
+    dispatch_fn=lambda: api.restart_deployment("payment-gw"),
+    readback_fn=lambda: api.get_deployment_status("payment-gw"),
+    expected_state={"status": "running", "restart_count": 1},
+)
+
+# Guaranteed Tri-State Outcome:
+if envelope.status == ExecutionStatus.CONFIRMED:
+    print(f"Verified mutation landed! Readback: {envelope.readback_state}")
+elif envelope.status == ExecutionStatus.UNCERTAIN:
+    # Readback timed out or reported conflicting state.
+    # Blind automated retries are strictly blocked (envelope.is_safe_to_retry == False).
+    print(f"Investigation required. Correlation ID: {envelope.correlation_id}")
+    print(f"Mismatched fields: {envelope.mismatch_fields}")
+elif envelope.status == ExecutionStatus.FAILED:
+    # Dispatch rejected before mutating system of record; safe to retry.
+    print(f"Dispatch failed cleanly: {envelope.error}")
+```
+
+### Tri-State Execution Guarantees
+| Status | Meaning | Retry Safety | Action Required |
+| :--- | :--- | :---: | :--- |
+| **`CONFIRMED`** | Live readback query matched all expected state fields within SLA. | ❌ Retries Locked | Proceed to next workflow step. |
+| **`UNCERTAIN`** | Mutation dispatched, but readback timed out, errored, or had field mismatches. | ❌ **Retries Blocked** | Downstream retries locked. Human/automation investigates using `correlation_id`. |
+| **`FAILED`** | Dispatch failed before touching system of record (e.g. auth rejection). | ✅ **Safe to Retry** | Re-attempt mutation with corrected parameters. |
+
+### Two-Tier Data Testing Architecture
+Enterprise Adapters strictly avoids live HTTP fetching during unit CI:
+- **Tier 1 (Golden SaaS Fixtures)**: Pre-recorded, sanitized Jira incident tickets, Confluence space trees, and Notion databases checked into `tests/fixtures/corpora/` for deterministic, sub-second CI validation.
+- **Tier 2 (Opt-in Live Harness)**: Integration harness connecting to live SaaS instances when credentials and live flags are explicitly configured.
+
+---
+
 ## Installation & Quickstart
 
 ### 1. Install via PyPI
