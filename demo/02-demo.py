@@ -221,7 +221,6 @@ def main() -> None:
 
     from enterprise_adapters.policy import PolicyDecision, PolicyDecisionType
     from enterprise_adapters.approvals import ApprovalPackageGenerator
-    from enterprise_adapters.approval_storage import SQLiteApprovalStore
     from enterprise_adapters.github_issue_adapter import GitHubIssueAdapter
 
     evaluator_decision = PolicyDecision(
@@ -259,7 +258,7 @@ def main() -> None:
     receipt = adapter.execute_action(action)
 
     print(f"\n{'=' * 70}")
-    print(f"  ✅ Issue created!")
+    print("  ✅ Issue created!")
     print(f"     URL:    {receipt['metadata']['issue_url']}")
     print(f"     Number: #{receipt['metadata']['issue_number']}")
     print(f"     Repo:   {receipt['metadata']['repo']}")

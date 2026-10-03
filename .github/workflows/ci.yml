@@ -7,12 +7,23 @@ on:
     branches: ["main", "master"]
 
 jobs:
+  docker-smoke-test:
+    name: Docker Hermetic Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Test Suite & Smoke Test via Docker Compose
+        run: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+
   test:
+    name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout repository
@@ -24,15 +35,24 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
+      - name: Install uv
+        run: pip install uv
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          uv venv
+          uv pip install -e ".[dev]"
 
       - name: Run Ruff Linter
         run: |
-          python -m ruff check src
+          uv run ruff check .
 
-      - name: Run Pytest Suite
+      - name: Run Pytest Suite with Coverage
         run: |
-          python -m pytest -v --tb=short
+          uv run pytest -v --tb=short --cov=enterprise_adapters --cov=knowledge_fabric_adapters --cov-report=term-missing --cov-fail-under=90
+
+      - name: Run Enterprise Adapter Smoke Test
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          uv run python benchmarks/live_adapter_smoke_test.py

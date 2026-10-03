@@ -32,7 +32,7 @@ Homepage = "https://github.com/sagarv48/knowledge-fabric-enterprise-adapters"
 enterprise-adapters-mcp = "enterprise_adapters.mcp_server:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0.0", "ruff>=0.4.0", "pyright>=1.1.0"]
+dev = ["pytest>=8.0.0", "pytest-cov>=5.0.0", "ruff>=0.4.0", "pyright>=1.1.0"]
 mcp = ["mcp>=1.10.0"]
 pdf = ["pypdf>=5.0.0"]
 
@@ -58,3 +58,7 @@ ignore = ["E501", "W292", "W293"]
 include = ["src"]
 pythonVersion = "3.11"
 typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short --cov=enterprise_adapters --cov=knowledge_fabric_adapters --cov-report=term-missing --cov-fail-under=90"

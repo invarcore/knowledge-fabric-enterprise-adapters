@@ -1,0 +1,21 @@
+services:
+  test-suite:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: enterprise-adapters-test-suite
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["uv", "run", "pytest", "--cov=enterprise_adapters", "--cov=knowledge_fabric_adapters", "--cov-report=term-missing", "--cov-fail-under=90"]
+
+  smoke-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: enterprise-adapters-smoke-test
+    depends_on:
+      - test-suite
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    command: ["uv", "run", "python", "benchmarks/live_adapter_smoke_test.py"]

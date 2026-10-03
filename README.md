@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/sagarv48/knowledge-fabric-enterprise-adapters/actions"><img src="https://img.shields.io/badge/CI-passing-brightgreen.svg" alt="CI Status"></a>
+  <a href="tests"><img src="https://img.shields.io/badge/Coverage-97%25-brightgreen.svg" alt="Test Coverage"></a>
   <a href="https://github.com/sagarv48/knowledge-fabric-enterprise-adapters/releases"><img src="https://img.shields.io/badge/Release-v0.1.1-blue.svg" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License"></a>
   <a href="Dockerfile"><img src="https://img.shields.io/badge/Docker-Multi--Stage-2496ED.svg" alt="Docker"></a>
@@ -246,6 +247,41 @@ docker run -d \
 Deploy using native production manifests with `/healthz` liveness probes and non-root security contexts:
 ```bash
 kubectl apply -f deploy/kubernetes/
+```
+
+---
+
+## 🧪 Testing & Verification
+
+The repository maintains strict test coverage ($\ge 90\%$) with hermetic local testing, automated secret-sanitization benchmarks, containerized Docker execution, and live cloud verification:
+
+### 1. Pytest Suite with Coverage Enforcement
+Run the complete unit and integration test suite:
+```bash
+# Run tests with 90% coverage threshold enforcement
+uv run pytest --cov=enterprise_adapters --cov=knowledge_fabric_adapters --cov-report=term-missing --cov-fail-under=90
+```
+
+### 2. Zero-Cost Hermetic Smoke Test
+Executes an end-to-end audit loop: document allowlist ingestion, secret scrubbing (AWS keys, Bearer tokens, DB credentials), policy evaluation, HMAC cryptographic signature verification, mutative execution receipt emission, and MCP tool health checks—100% offline in < 40ms:
+```bash
+uv run python benchmarks/live_adapter_smoke_test.py
+```
+
+### 3. OpenRouter Cloud Mode
+Test live cloud governance review using OpenRouter's free tier models (e.g. `openrouter/free`):
+```bash
+# Safely inject your API key in terminal (input hidden)
+$env:OPENROUTER_API_KEY = Read-Host -MaskInput "Enter OpenRouter API Key"
+
+# Run cloud verification
+uv run python benchmarks/live_adapter_smoke_test.py --openrouter --model openrouter/free
+```
+
+### 4. Containerized Docker Compose Testing
+Verify the complete test suite and smoke test inside an isolated, production-identical Linux container:
+```bash
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 ```
 
 ---

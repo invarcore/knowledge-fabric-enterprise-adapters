@@ -7,3 +7,8 @@ dist/
 build/
 *.egg-info/
 .env
+.env.*
+*.env
+.coverage
+.coverage.*
+htmlcov/
