@@ -25,8 +25,8 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/sagarv48/knowledge-fabric-enterprise-adapters"
-"Bug Tracker" = "https://github.com/sagarv48/knowledge-fabric-enterprise-adapters/issues"
+Homepage = "https://github.com/invarcore/knowledge-fabric-enterprise-adapters"
+"Bug Tracker" = "https://github.com/invarcore/knowledge-fabric-enterprise-adapters/issues"
 
 [project.scripts]
 enterprise-adapters-mcp = "enterprise_adapters.mcp_server:main"
