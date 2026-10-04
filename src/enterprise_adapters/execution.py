@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Approved runtime execution for private adapters.
 
 Includes fail-closed ExecutionEnvelope with tri-state verification

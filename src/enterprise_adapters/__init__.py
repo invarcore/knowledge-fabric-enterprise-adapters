@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Enterprise adapter package."""
 
 from enterprise_adapters.content_sanitizer import sanitize_document_content

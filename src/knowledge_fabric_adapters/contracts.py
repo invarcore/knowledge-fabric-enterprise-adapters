@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Public adapter contracts for the knowledge-fabric ecosystem.
 
 These interfaces define how custom source adapters and runtime adapters

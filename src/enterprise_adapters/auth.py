@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Bearer-token authentication helpers for the private adapter HTTP service.
 
 Set ADAPTER_API_KEY to a non-empty secret to enable auth.

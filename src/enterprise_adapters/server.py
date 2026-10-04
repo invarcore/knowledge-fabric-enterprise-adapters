@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Minimal HTTP service for private adapter health and status checks."""
 
 from __future__ import annotations

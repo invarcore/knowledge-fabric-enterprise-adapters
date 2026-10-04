@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Ready-to-use standard enterprise source connectors."""
 
 from knowledge_fabric_adapters.connectors.confluence import ConfluenceSourceAdapter

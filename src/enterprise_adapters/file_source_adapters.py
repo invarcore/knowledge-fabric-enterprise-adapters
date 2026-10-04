@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Read-only approved file-store source adapters."""
 
 from __future__ import annotations

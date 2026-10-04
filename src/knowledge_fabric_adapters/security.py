@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Security and secret-scrubbing utilities for enterprise adapters.
 
 Prevents credentials, API keys, Bearer tokens, and Authorization headers

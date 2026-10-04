@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """CLI entrypoint for the private adapter layer."""
 
 from enterprise_adapters.contracts import AdapterContext

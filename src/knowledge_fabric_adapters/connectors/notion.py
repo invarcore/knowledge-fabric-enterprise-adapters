@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Notion REST API source adapter.
 
 Implements KnowledgeSourceAdapter to ingest Notion databases and pages

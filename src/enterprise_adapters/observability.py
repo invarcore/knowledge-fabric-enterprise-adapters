@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Structured logging helpers for private adapters."""
 
 from __future__ import annotations

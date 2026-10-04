@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Jira Cloud and Server source adapter.
 
 Implements KnowledgeSourceAdapter to ingest Jira issues, post-mortems,

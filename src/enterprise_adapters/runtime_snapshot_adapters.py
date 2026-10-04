@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Snapshot-backed read-only runtime discovery adapters."""
 
 from __future__ import annotations

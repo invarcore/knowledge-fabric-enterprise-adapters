@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """MCP server entrypoint for Enterprise Source Adapters."""
 
 from __future__ import annotations

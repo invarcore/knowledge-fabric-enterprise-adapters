@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Google Drive API source adapter.
 
 Implements KnowledgeSourceAdapter to ingest Google Docs and files from Google Drive

@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """
 knowledge-fabric-adapters — public adapter contracts for the knowledge-fabric ecosystem.
 

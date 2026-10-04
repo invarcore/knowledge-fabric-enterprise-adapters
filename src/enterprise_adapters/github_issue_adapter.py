@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """GitHub Issues write adapter — creates issues after policy approval.
 
 This is the first real production adapter in the stack.

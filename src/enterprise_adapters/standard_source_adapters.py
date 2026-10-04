@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Built-in public source adapters for common document and web inputs.
 
 These adapters are intended for public adopters who want a safe starting point for

@@ -1,3 +1,6 @@
+# Copyright 2026 Invarcore Organization
+# SPDX-License-Identifier: Apache-2.0
+
 """Content scrubbing and redaction for enterprise document adapters.
 
 Prevents credentials, API keys, private keys, database passwords, and Bearer tokens
